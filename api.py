@@ -16,7 +16,7 @@ import json
 def create_app(env):
     app = Flask(__name__)
     CORS(app)
-    app.config['DEBUG'] = True
+    app.config['DEBUG'] = False
     app.config["MONGO_URI"] = env.MONGO_DATABASE_URI
     app.config["JWT_SECRET_KEY"] = env.API_JWT_SECRET
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=10)
