@@ -5,7 +5,7 @@ from config import config
 from flask_pymongo import PyMongo
 from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, JWTManager, create_refresh_token
 from flask_cors import CORS
-from User import User,FullTemplate
+from User import User, FullTemplate
 from bson.objectid import ObjectId
 from bson.json_util import dumps, loads
 from bson import json_util
@@ -16,7 +16,7 @@ import json
 def create_app(env):
     app = Flask(__name__)
     CORS(app)
-    app.config['DEBUG'] = False
+    app.config['DEBUG'] = True
     app.config["MONGO_URI"] = env.MONGO_DATABASE_URI
     app.config["JWT_SECRET_KEY"] = env.API_JWT_SECRET
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=10)
@@ -121,6 +121,25 @@ def register():
         return jsonify(status=False, msg="Missing request parameters"), 400
 
 
+@app.route("/api/v1/fileTemplate/set", methods=['POST'])
+@jwt_required()
+def fileTemplate():
+    json = request.get_json()
+    if json != None:
+        try:
+            idTemplate=json["id_template"]
+            text=json["text"]
+            print(text)
+            print(idTemplate)
+            mongo.db.templates.update_one({"id_template": idTemplate}, {"$set": {"code": text}})
+
+            return jsonify(status=True, msg="Text added"), 200
+        except:
+            return jsonify(status=False, msg="Error: Text added"), 500
+    else:
+        return jsonify(status=False, msg="Missing request text"), 400
+
+
 @app.route('/api/v1/parameters/set', methods=['POST'])
 @jwt_required()
 def parameters():
@@ -133,6 +152,8 @@ def parameters():
             return jsonify(status=False, msg="Error: parameter not added"), 500
     else:
         return jsonify(status=False, msg="Missing request parameters"), 400
+
+
 @app.route('/api/v1/recipe/set', methods=['POST'])
 @jwt_required()
 def receipe():
@@ -144,7 +165,7 @@ def receipe():
         except:
             return jsonify(status=False, msg="Error: Recipe not added"), 500
     else:
-        return jsonify(status=False, msg="Missing request recipes"), 400    
+        return jsonify(status=False, msg="Missing request recipes"), 400
 
 
 @app.route('/api/v1/templates/set', methods=['POST'])
@@ -198,6 +219,31 @@ def get_parameters():
     code = 200 if status else 500
     return jsonify(parameters=parameters, msg=msg, status=status), code
 
+@app.route('/api/v1/fileTemplate/get', methods=['POST'])
+@jwt_required()
+def get_fileTemplate():
+    text = ""
+    msg = ""
+    status = False
+    try:
+        
+        id_template = request.json['id_template']
+        text = mongo.db.templates.find_one({"id_template": id_template})
+        if text:
+            text = text["code"]
+            msg = "Code found"
+            status = True
+        else:
+            msg = "Code not found"
+            status = False
+            text = ""
+    except:
+        msg = "Error: could not retrieve code info"
+        status = False
+        text = ""
+    code = 200 if status else 500
+    return jsonify(code=text, msg=msg, status=status), code
+
 
 @app.route('/api/v1/recipes/get', methods=['GET'])
 @jwt_required()
@@ -248,7 +294,6 @@ def get_templates():
     return jsonify(templates=templates, msg=msg, status=status), code
 
 
-
 @app.route('/api/v1/fulltemplates/get', methods=['POST'])
 @jwt_required()
 def get_templates_id():
@@ -257,26 +302,28 @@ def get_templates_id():
     status = False
     json = request.get_json()
     if json != None:
-        id_template=json ['id_template']
+        id_template = json['id_template']
         print(id_template)
-        
+
         try:
-            template=mongo.db.templates.find_one({'id_template':id_template})
+            template = mongo.db.templates.find_one(
+                {'id_template': id_template})
             if template:
-                parameters=template['parameters']
+                parameters = template['parameters']
                 print(parameters)
-                params=[]
-                for param in parameters:                   
-                    p=mongo.db.parameters.find_one({'id_parameter':param})
-                    js = dumps(p,default=json_util.default)
-                    params.append(js)
+                params = []
+                for param in parameters:
+                    p = mongo.db.parameters.find_one({'id_parameter': param})
+                    # js = dumps(p,default=json_util.default)
+                    params.append(p)
+
                 template['parameters'] = params
-                temp = dumps(template,default=json_util.default)
-            
-                msg = "".join([ 'template found'])
+                temp = dumps(template, default=json_util.default)
+
+                msg = "".join(['template found'])
                 status = True
                 code = 200 if status else 500
-                return jsonify(template= temp, msg=msg, status=status), code
+                return jsonify(template=temp, msg=msg, status=status), code
 
         except:
             msg = "Error: could not retireve parameters info"
@@ -285,42 +332,6 @@ def get_templates_id():
     else:
         return jsonify(status=False, msg="Missing request parameters"), 400
 
-
-@app.route('/api/v1/fulltemplatesxxx/get', methods=['POST'])
-@jwt_required()
-def get_templates_idxxx():
-    templates = []
-    msg = ""
-    status = False
-    json = request.get_json()
-    if json != None:
-        id_template=json ['id_template']
-        print(id_template)
-        
-        try:
-            template=mongo.db.templates.find_one({'id_template':id_template})
-            if template:
-                parameters=template['parameters']
-                print(parameters)
-                params=[]
-                for param in parameters:                   
-                    p=mongo.db.parameters.find_one({'id_parameter':param})
-                    js = dumps(p,default=json_util.default)
-                    params.append(js)
-                template['parameters'] = params
-                temp = dumps(template,default=json_util.default)
-            
-                msg = "".join([ 'template found'])
-                status = True
-                code = 200 if status else 500
-                return jsonify(template= temp, msg=msg, status=status), code
-
-        except:
-            msg = "Error: could not retireve parameters info"
-            status = False
-            return jsonify(msg=msg, status=status), 500
-    else:
-        return jsonify(status=False, msg="Missing request parameters"), 400
 
 if __name__ == '__main__':
     app.run()
