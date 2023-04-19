@@ -16,10 +16,10 @@ import json
 def create_app(env):
     app = Flask(__name__)
     CORS(app)
-    app.config['DEBUG'] = True
+    app.config['DEBUG'] = False
     app.config["MONGO_URI"] = env.MONGO_DATABASE_URI
     app.config["JWT_SECRET_KEY"] = env.API_JWT_SECRET
-    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=10)
+    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=100)
     app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=30)
     app.config.from_object(env)
 
@@ -194,7 +194,46 @@ def parametersbylist():
             return jsonify(status=False, msg="Error: parameter list not added"), 500
     else:
         return jsonify(status=False, msg="Missing request parameters"), 400
+@app.route('/api/v1/recipe/parameter/update', methods=['POST'])
+@jwt_required()
+def updateParameterRecipe():
+    json = request.get_json()
+    if json is not None:
+        try:
+            id_recipe=json["data"]["id_recipe"]
+            id_parameter=json["data"]["id_parameter"]
+            value=json["data"]["value"]
+            result = mongo.db.recipes.update_one({'id_recipe': id_recipe, 'parameters.id_parameter': id_parameter},
+                                                    {'$set': {'parameters.$.value': value}})
+            if result.modified_count > 0:
+                return jsonify(status=True, msg="Recipe parameter updated"), 200
+            else:
+                return jsonify(status=False, msg="Error: Recipe or parameter not found"), 404
+        except:
+            return jsonify(status=False, msg="Error: Recipe parameter not updated"), 500
+    else:
+        return jsonify(status=False, msg="Missing request body"), 400
+@app.route('/api/v1/recipe/parameter/get', methods=['POST'])
+@jwt_required()
+def getParameterRecipe():
+    json = request.get_json()
+    if json is not None:
+        try:
+            id_recipe=json["data"]["id_recipe"]
+            id_parameter=json["data"]["id_parameter"]
+            print(id_parameter,id_recipe)
+            result = mongo.db.recipes.find_one(
+    {'id_recipe': id_recipe, 'parameters': {'$elemMatch': {'id_parameter': id_parameter}}},
+    {'_id':False, 'parameters.$': True})
+            if result is not None:
 
+                return jsonify(status=True, msg="Recipe parameter ok", parameterRecipe=result['parameters'][0]), 200
+            else:
+                return jsonify(status=False, msg="Error: Recipe or parameter not found"), 404
+        except:
+            return jsonify(status=False, msg="Error: Recipe parameter"), 500
+    else:
+        return jsonify(status=False, msg="Missing request body"), 400    
 
 @app.route('/api/v1/parameters/get', methods=['GET'])
 @jwt_required()
