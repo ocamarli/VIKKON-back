@@ -16,7 +16,7 @@ import json
 def create_app(env):
     app = Flask(__name__)
     CORS(app)
-    app.config['DEBUG'] = False
+    app.config['DEBUG'] = env.DEBUG
     app.config["MONGO_URI"] = env.MONGO_DATABASE_URI
     app.config["JWT_SECRET_KEY"] = env.API_JWT_SECRET
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=100)
@@ -26,7 +26,7 @@ def create_app(env):
     return app
 
 
-env = config['development']
+env = config['local']
 app = create_app(env)
 jwt = JWTManager(app)
 mongo = PyMongo(app)
@@ -194,6 +194,7 @@ def parametersbylist():
             return jsonify(status=False, msg="Error: parameter list not added"), 500
     else:
         return jsonify(status=False, msg="Missing request parameters"), 400
+    
 @app.route('/api/v1/recipe/parameter/update', methods=['POST'])
 @jwt_required()
 def updateParameterRecipe():
@@ -235,6 +236,20 @@ def getParameterRecipe():
     else:
         return jsonify(status=False, msg="Missing request body"), 400    
 
+@app.route("/api/v1/recipe/<string:id_recipe>", methods=["GET"])
+def get_recipe(id_recipe):
+    if id_recipe is not None:
+        try:
+           print("recipe",str(id_recipe))
+           result = mongo.db.recipes.find_one({'id_recipe': str(id_recipe)}) 
+           result['_id'] = str(result['_id'])
+           result.pop('_id', None)
+
+           result=dict(result)
+
+           return jsonify(status=True, data=result), 200
+        except:
+            return jsonify(status=False, msg="Error: Recipe parameter"), 500
 @app.route('/api/v1/parameters/get', methods=['GET'])
 @jwt_required()
 def get_parameters():
