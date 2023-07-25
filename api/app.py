@@ -26,7 +26,7 @@ def create_app(env):
     return app
 
 
-env = config['local']
+env = config['development']
 app = create_app(env)
 jwt = JWTManager(app)
 mongo = PyMongo(app)
@@ -199,13 +199,16 @@ def parametersbylist():
 @jwt_required()
 def updateParameterRecipe():
     json = request.get_json()
+    print("dataUpdate",json)
     if json is not None:
         try:
             id_recipe=json["data"]["id_recipe"]
             id_parameter=json["data"]["id_parameter"]
             value=json["data"]["value"]
+            print(id_recipe,id_parameter,value)
             result = mongo.db.recipes.update_one({'id_recipe': id_recipe, 'parameters.id_parameter': id_parameter},
                                                     {'$set': {'parameters.$.value': value}})
+            print(result)
             if result.modified_count > 0:
                 return jsonify(status=True, msg="Recipe parameter updated"), 200
             else:
@@ -218,6 +221,7 @@ def updateParameterRecipe():
 @jwt_required()
 def getParameterRecipe():
     json = request.get_json()
+    print(json)
     if json is not None:
         try:
             id_recipe=json["data"]["id_recipe"]
@@ -312,6 +316,7 @@ def get_recipes():
                 'id_template': recipe['id_template'],
                 'id_recipe': recipe['id_recipe'],
                 'description': recipe['description'],
+                'parameters':recipe['parameters']
             })
         msg = "".join([str(len(recipes)), ' recipes in stack'])
         status = True
